@@ -1,11 +1,11 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import re
 import smtplib
 from email.message import EmailMessage
-from io import StringIO
+
+# ------------------ Helper Functions ------------------
 
 def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
@@ -14,16 +14,15 @@ def topsis(df, weights, impacts):
     data = df.copy()
     numeric = data.iloc[:, 1:].apply(pd.to_numeric)
 
-    # Step 2: Normalize
+    # Normalize
     norm = np.sqrt((numeric ** 2).sum())
     normalized = numeric / norm
 
-    # Step 3: Apply weights
+    # Apply weights
     weighted = normalized * weights
 
-    # Step 4: Ideal best and worst
-    ideal_best = []
-    ideal_worst = []
+    # Ideal best & worst
+    ideal_best, ideal_worst = [], []
 
     for i in range(len(weights)):
         if impacts[i] == "+":
@@ -36,19 +35,23 @@ def topsis(df, weights, impacts):
     ideal_best = np.array(ideal_best)
     ideal_worst = np.array(ideal_worst)
 
-    # Step 5: Distances
-    dist_best = np.sqrt(((weighted - ideal_best) ** 2).sum(axis=1))
-    dist_worst = np.sqrt(((weighted - ideal_worst) ** 2).sum(axis=1))
+    # Distances
+    d_pos = np.sqrt(((weighted - ideal_best) ** 2).sum(axis=1))
+    d_neg = np.sqrt(((weighted - ideal_worst) ** 2).sum(axis=1))
 
-    # Step 6: Score
-    score = dist_worst / (dist_best + dist_worst)
+    score = d_neg / (d_pos + d_neg)
 
     data["Topsis Score"] = score
-    data["Rank"] = data["Topsis Score"].rank(ascending=False, method="dense").astype(int)
+    data["Rank"] = data["Topsis Score"].rank(
+        ascending=False, method="dense"
+    ).astype(int)
 
     return data
 
 def send_email(receiver, csv_text):
+    if "EMAIL" not in st.secrets or "PASSWORD" not in st.secrets:
+        return False
+
     sender = st.secrets["EMAIL"]
     password = st.secrets["PASSWORD"]
 
@@ -64,45 +67,67 @@ def send_email(receiver, csv_text):
         server.login(sender, password)
         server.send_message(msg)
 
+    return True
+
+# ------------------ Streamlit UI ------------------
+
+st.set_page_config(page_title="TOPSIS Web App")
 st.title("TOPSIS Web Application")
-st.write("Upload CSV, enter Weights, Impacts and Email to receive result.")
+
+st.write("Upload CSV file, enter weights & impacts. Result will be shown and downloadable.")
+st.write("Email is optional.")
 
 file = st.file_uploader("Upload CSV File", type=["csv"])
-weights = st.text_input("Enter Weights (comma separated)")
-impacts = st.text_input("Enter Impacts (comma separated, + or -)")
-email = st.text_input("Enter Email")
+weights = st.text_input("Enter Weights (comma separated)", "1,1,1,1")
+impacts = st.text_input("Enter Impacts (+ or -, comma separated)", "+,+,+,+")
+email = st.text_input("Enter Email (optional)")
 
 if st.button("Submit"):
     if not file:
         st.error("Please upload a CSV file.")
-    elif not weights or not impacts or not email:
-        st.error("All fields are required.")
-    elif not is_valid_email(email):
-        st.error("Invalid email format.")
-    else:
-        try:
-            df = pd.read_csv(file)
-            if df.shape[1] < 3:
-                st.error("CSV must contain at least 3 columns.")
+        st.stop()
+
+    try:
+        df = pd.read_csv(file)
+
+        if df.shape[1] < 3:
+            st.error("CSV must have at least 1 name column + 2 criteria.")
+            st.stop()
+
+        w = list(map(float, weights.split(",")))
+        i = impacts.split(",")
+
+        if len(w) != len(i) or len(w) != df.shape[1] - 1:
+            st.error("Weights, impacts and criteria count must match.")
+            st.stop()
+
+        for x in i:
+            if x not in ["+", "-"]:
+                st.error("Impacts must be + or - only.")
                 st.stop()
 
-            w = list(map(float, weights.split(",")))
-            i = impacts.split(",")
+        result = topsis(df, np.array(w), i)
+        csv_text = result.to_csv(index=False)
 
-            if len(w) != len(i) or len(w) != df.shape[1] - 1:
-                st.error("Weights, Impacts and number of criteria must match.")
-                st.stop()
+        st.success("TOPSIS calculation successful!")
+        st.dataframe(result)
 
-            for x in i:
-                if x not in ["+", "-"]:
-                    st.error("Impacts must be + or - only.")
-                    st.stop()
+        st.download_button(
+            "Download Result CSV",
+            csv_text,
+            file_name="topsis_result.csv",
+            mime="text/csv"
+        )
 
-            result = topsis(df, np.array(w), i)
-            csv_text = result.to_csv(index=False)
+        if email:
+            if not is_valid_email(email):
+                st.warning("Invalid email format. Skipping email.")
+            else:
+                sent = send_email(email, csv_text)
+                if sent:
+                    st.success("Result sent to email successfully!")
+                else:
+                    st.info("Email service not configured. Download instead.")
 
-            send_email(email, csv_text)
-            st.success("Result sent to your email successfully!")
-
-        except Exception as e:
-            st.error(str(e))
+    except Exception as e:
+        st.error(str(e))
