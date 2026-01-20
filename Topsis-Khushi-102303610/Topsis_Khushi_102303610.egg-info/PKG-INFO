@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: Topsis-Khushi-102303610
+Version: 1.0.0
+Summary: A Python package for TOPSIS multi-criteria decision making method
+Author: Khushi
+Author-email: khushigoyal1808@gmail.com
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: pandas
+Requires-Dist: numpy
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# TOPSIS Package
+
+This package implements the TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) method.
+
+## Installation
+```bash
+pip install Topsis-Khushi-102303610
