@@ -171,13 +171,11 @@ Then upload your CSV file and configure parameters through the web interface.
 
 ## 📸 Application Screenshots
 
-### Web Application Interface
+### Web Application – Input Interface
+![Web App Input](screenshots/Screenshot%202026-01-21%20041305.png)
 
-**Email Submission Feature:**
-![Email Input](screenshots/email_input.png)
-
-**TOPSIS Calculation Results:**
-![Results Table](screenshots/results_table.png)
+### Web Application – Results & Download
+![Web App Results](screenshots/Screenshot%202026-01-21%20022140.png)
 
 The web application displays the TOPSIS scores and rankings in an interactive table format, with options to download results as CSV and send them via email.
 
