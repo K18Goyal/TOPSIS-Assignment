@@ -61,7 +61,7 @@ def send_email(receiver, csv_text):
         server.login(sender, password)
         server.send_message(msg)
 
-st.title("TOPSIS Web Application")
+st.title("TOPSIS Web Application!")
 st.write("Upload CSV, enter Weights, Impacts and Email")
 
 file = st.file_uploader("Upload CSV File", type=["csv"])
